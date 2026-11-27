@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { EventStatus } from "./booking";
 import type { PrivateBooking } from "./queries";
+import { triggerBandPush } from "./push-client";
 
 export interface EventFormValues {
   title: string;
@@ -60,6 +61,15 @@ export async function saveEvent(values: EventFormValues, id?: string): Promise<s
   };
   const { error: pErr } = await supabase.from("event_private").upsert(privateRow);
   if (pErr) throw new Error(pErr.message);
+
+  if (values.status === "confirmado") {
+    const local = [values.congregation, values.city].filter(Boolean).join(" - ");
+    await triggerBandPush(
+      "Evento confirmado na agenda! 🎤",
+      `${values.event_date}${local ? ` • ${local}` : ""}`
+    );
+  }
+
   return eventId;
 }
 
@@ -74,6 +84,11 @@ export async function confirmPayment(eventId: string) {
     .update({ status: "confirmado", confirmed_at: new Date().toISOString() })
     .eq("id", eventId);
   if (error) throw new Error(error.message);
+
+  await triggerBandPush(
+    "Data confirmada na agenda! 🎶",
+    "Um evento teve o pagamento confirmado. Confira os horários no app."
+  );
 }
 
 export async function deleteEvent(eventId: string) {
