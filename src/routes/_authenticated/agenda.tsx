@@ -3,13 +3,15 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, Plus } from "lucide-react";
+import { Bell, CalendarDays, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { EventDetailDialog } from "@/components/app/EventDetailDialog";
 import { EventFormDialog } from "@/components/app/EventFormDialog";
 import { MonthCalendar } from "@/components/app/MonthCalendar";
 import { StatusBadge, STATUS_DOT } from "@/components/app/StatusBadge";
+import { subscribeDeviceToPush } from "@/lib/push-client";
 import { cn } from "@/lib/utils";
 import { formatDateLong, formatTime, parseDateOnly, STATUS_LABEL, STATUS_ORDER, toDateOnly } from "@/lib/booking";
 import { accessQuery, eventsQuery, publicProfileAdminQuery, type AgendaEvent } from "@/lib/queries";
@@ -84,12 +86,32 @@ function AgendaPage() {
             {access.isAdmin && ` · ${pendingCount} aguardando confirmação`}
           </p>
         </div>
-        {access.isAdmin && (
-          <Button size="lg" onClick={() => setForm({ open: true, event: null, date: selectedDate })}>
-            <Plus />
-            Nova agenda
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={async () => {
+              try {
+                const ok = await subscribeDeviceToPush();
+                if (ok) toast.success("Notificações ativadas neste aparelho!");
+                else toast.error("Permissão de notificação negada.");
+              } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : "Erro ao ativar notificações.");
+              }
+            }}
+          >
+            <Bell className="size-4" />
+            Ativar alertas
           </Button>
-        )}
+
+          {access.isAdmin && (
+            <Button size="lg" onClick={() => setForm({ open: true, event: null, date: selectedDate })}>
+              <Plus />
+              Nova agenda
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
